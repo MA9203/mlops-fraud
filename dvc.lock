@@ -1,0 +1,18 @@
+schema: '2.0'
+stages:
+  preprocess:
+    cmd: python src/data_preprocess.py
+    deps:
+    - path: data/raw/creditcard.csv
+      hash: md5
+      md5: e90efcb83d69faf99fcab8b0255024de
+      size: 150828752
+    - path: src/data_preprocess.py
+      hash: md5
+      md5: cd9f9cb58bc604fff66869081e8be96c
+      size: 628
+    outs:
+    - path: data/processed/creditcard_processed.csv
+      hash: md5
+      md5: a78af86d489141b9f3a3d679eba102e3
+      size: 155308323

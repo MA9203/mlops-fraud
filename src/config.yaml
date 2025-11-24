@@ -1,0 +1,18 @@
+data:
+  processed_path: "data/processed/creditcard_processed.csv"
+
+training:
+  test_size: 0.2
+  random_state: 42
+
+models:
+  logistic:
+    max_iter: 3000
+    class_weight: "balanced"
+
+  xgboost:
+    n_estimators: 200
+    learning_rate: 0.1
+    subsample: 0.9
+    colsample_bytree: 0.9
+    scale_pos_weight: 30

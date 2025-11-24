@@ -1,0 +1,8 @@
+stages:
+  preprocess:
+    cmd: python src/data_preprocess.py
+    deps:
+      - src/data_preprocess.py
+      - data/raw/creditcard.csv
+    outs:
+      - data/processed/creditcard_processed.csv
