@@ -15,8 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copier le code source
 COPY src src
 
-# Copier les modèles MLflow
-COPY mlruns mlruns
+
 
 EXPOSE 8000
 
