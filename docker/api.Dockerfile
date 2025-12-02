@@ -2,21 +2,18 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Dépendances système
 RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copier requirements
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copier le code source
-COPY src src
 
-# Copier les modèles MLflow
-COPY mlruns mlruns
+
+# 👉 Ajout essentiel
+ENV PYTHONPATH="/app"
 
 EXPOSE 8000
 

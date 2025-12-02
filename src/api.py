@@ -1,18 +1,17 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import mlflow
-import pandas as pd
+from src.inference import load_model, predict_single
 
-# 🔥 Import corrigé
-from .inference import load_model, predict_single
+# Path local du modèle
+MODEL_PATH = "src/model/model.pkl"
 
 app = FastAPI(title="Fraud Detection API")
 
-MODEL_URI = "runs:/c83550f503c24fdcaefdd67707e7ac89/model"
+@app.on_event("startup")
+def load_model_on_startup():
+    global model
+    model = load_model(MODEL_PATH)
 
-
-
-model = None
 
 class Transaction(BaseModel):
     Time: float
@@ -46,13 +45,11 @@ class Transaction(BaseModel):
     V27: float
     V28: float
 
-@app.on_event("startup")
-def load_model_on_startup():
-    global model
-    model = load_model(MODEL_URI)
 
 @app.post("/predict")
-def predict(transaction: Transaction):
-    data = transaction.dict()
-    result = predict_single(model, data)
-    return result
+def predict(data: Transaction):
+    pred, proba = predict_single(model, data.dict())
+    return {
+        "prediction": int(pred),
+        "probability": float(proba)
+    }
