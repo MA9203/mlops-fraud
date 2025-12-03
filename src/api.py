@@ -9,7 +9,7 @@ USE_MLFLOW = os.getenv("USE_MLFLOW", "false").lower() == "true"
 
 # 📦 Chemin du modèle .pkl pour Render
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PKL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
+MODEL_PKL_PATH = os.path.join(BASE_DIR, "model.pkl")
 
 model = None
 
