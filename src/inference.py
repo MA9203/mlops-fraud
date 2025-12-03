@@ -1,8 +1,4 @@
-import mlflow
 import pandas as pd
-
-def load_model(model_uri: str):
-    return mlflow.sklearn.load_model(model_uri)
 
 def predict_single(model, data: dict):
     df = pd.DataFrame([data])
@@ -16,14 +12,12 @@ def predict_single(model, data: dict):
     # 🔥 3. Faire la prédiction
     prediction = model.predict(df)[0]
 
-    # Cas logistic regression → predict_proba OK
     if hasattr(model, "predict_proba"):
-        proba = model.predict_proba(df)[0][1]
+        proba = float(model.predict_proba(df)[0][1])
     else:
-        # Cas XGBoost modèle binaire → sortie directe
-        proba = float(model.predict_proba(df)[0][1]) if hasattr(model, "predict_proba") else float(prediction)
+        proba = float(prediction)
 
     return {
         "prediction": int(prediction),
-        "probability": float(proba)
+        "probability": proba
     }
