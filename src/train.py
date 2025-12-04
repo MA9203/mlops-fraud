@@ -1,52 +1,35 @@
-import yaml
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score, average_precision_score
 import mlflow
 import mlflow.sklearn
 
-from sklearn.model_selection import train_test_split
+df = pd.read_csv("data/raw/creditcard.csv")
 
-from utils.loaders import load_dataset
-from utils.metrics import evaluate
-from models.baseline import build_logistic
-from models.xgboost_model import build_xgb
+X = df.drop("Class", axis=1)
+y = df["Class"]
 
-def main():
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
 
-    with open("src/config.yaml") as f:
-        config = yaml.safe_load(f)
+mlflow.set_tracking_uri("file:./mlruns")
+mlflow.set_experiment("fraud_detection_pipeline")
 
-    X, y = load_dataset(config["data"]["processed_path"])
+with mlflow.start_run(run_name="baseline_logreg"):
 
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y,
-        test_size=config["training"]["test_size"],
-        random_state=config["training"]["random_state"],
-        stratify=y
-    )
+    model = LogisticRegression(max_iter=3000)
+    model.fit(X_train, y_train)
 
-    mlflow.set_experiment("fraud_detection_pipeline")
+    preds = model.predict_proba(X_test)[:, 1]
+    roc = roc_auc_score(y_test, preds)
+    pr = average_precision_score(y_test, preds)
 
-    # Logistic Regression
-    with mlflow.start_run(run_name="logistic_regression"):
-        model = build_logistic(config)
-        model.fit(X_train, y_train)
-        roc, pr = evaluate(model, X_val, y_val)
+    mlflow.log_metric("ROC_AUC", roc)
+    mlflow.log_metric("PR_AUC", pr)
 
-        mlflow.log_metric("ROC_AUC", roc)
-        mlflow.log_metric("PR_AUC", pr)
-        mlflow.sklearn.log_model(model, "model")
+    # LOG OBLIGATOIRE DU MODÈLE !!!
+    mlflow.sklearn.log_model(model, artifact_path="model")
 
-    # XGBoost
-    with mlflow.start_run(run_name="xgboost_model"):
-        model = build_xgb(config)
-        model.fit(X_train, y_train)
-        roc, pr = evaluate(model, X_val, y_val)
-
-        mlflow.log_metric("ROC_AUC", roc)
-        mlflow.log_metric("PR_AUC", pr)
-        mlflow.sklearn.log_model(model, "model")
-
-if __name__ == "__main__":
-    main()
-
-
-
+print("Model trained and logged successfully.")

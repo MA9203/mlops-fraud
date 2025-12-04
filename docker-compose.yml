@@ -1,0 +1,40 @@
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: fraud_api
+    ports:
+      - "8000:8000"
+    networks:
+      - mlops-net
+
+  mlflow_ui:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow_ui
+    command: ["mlflow", "ui", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "/mlruns"]
+    environment:
+      - MLFLOW_TRACKING_URI=/mlruns
+    volumes:
+      - ./mlruns:/mlruns
+    ports:
+      - "5000:5000"
+    networks:
+      - mlops-net
+
+  ui:
+    build:
+      context: .
+      dockerfile: docker/ui.Dockerfile
+    container_name: fraud_ui
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+    networks:
+      - mlops-net
+
+networks:
+  mlops-net:
+    driver: bridge

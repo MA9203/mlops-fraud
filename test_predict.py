@@ -1,50 +1,45 @@
 import requests
+import json
 
-url = "http://127.0.0.1:8000/predict"
+url = "http://localhost:8000/predict"
 
 sample = {
-    "Time": 1000,
-    "Amount": 50.0,
-    "V1": -1.2,
-    "V2": 0.5,
-    "V3": 1.4,
-    "V4": -0.7,
-    "V5": 0.3,
-    "V6": -0.2,
-    "V7": 0.8,
-    "V8": -0.5,
-    "V9": 1.1,
-    "V10": -0.9,
-    "V11": 0.2,
-    "V12": 0.1,
-    "V13": -0.3,
-    "V14": -1.1,
-    "V15": 0.7,
-    "V16": -0.4,
-    "V17": 0.9,
-    "V18": -1.0,
-    "V19": 0.6,
-    "V20": -0.8,
-    "V21": 1.3,
-    "V22": -0.6,
-    "V23": 0.4,
-    "V24": -0.2,
-    "V25": 0.1,
-    "V26": -0.9,
-    "V27": 0.7,
-    "V28": -1.4
+    "Time": 100.0,
+    "V1": -1.359807134,
+    "V2": -0.072781173,
+    "V3": 2.536346738,
+    "V4": 1.378155224,
+    "V5": -0.33832077,
+    "V6": 0.462387778,
+    "V7": 0.239598554,
+    "V8": 0.098697901,
+    "V9": 0.363786969,
+    "V10": 0.090794172,
+    "V11": -0.551599533,
+    "V12": -0.617800856,
+    "V13": -0.991389847,
+    "V14": -0.311169354,
+    "V15": 1.468176972,
+    "V16": -0.470400525,
+    "V17": 0.207971242,
+    "V18": 0.02579058,
+    "V19": 0.40399296,
+    "V20": 0.251412098,
+    "V21": -0.018306777,
+    "V22": 0.277837575,
+    "V23": -0.11047391,
+    "V24": 0.066928075,
+    "V25": 0.128539358,
+    "V26": -0.189114844,
+    "V27": 0.133558377,
+    "V28": -0.021053053,
+    "Amount": 149.62
 }
 
 print("Sending request...")
-response = requests.post(url, json=sample)
+response = requests.post(url, json=sample, timeout=10)
 
 print("STATUS =", response.status_code)
-print("RAW RESPONSE =")
-print(response.text)
+print("RAW =", response.text)
 
-# Try decode JSON only if status is OK
-if response.status_code == 200:
-    try:
-        print("\nParsed JSON =", response.json())
-    except:
-        print("⚠️ Could not decode JSON.")
+print("\nParsed JSON =", response.json())

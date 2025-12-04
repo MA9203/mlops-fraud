@@ -1,55 +1,151 @@
+import os
+import json
+import joblib
+import numpy as np
 from fastapi import FastAPI
 from pydantic import BaseModel
-from src.inference import load_model, predict_single
+from datetime import datetime
 
-# Path local du modèle
-MODEL_PATH = "src/model/model.pkl"
+# ============================================================
+# 🔥 IMPORTANT : Correction du chemin d'import
+# ============================================================
+# Ton fichier est dans : /app/src/api.py
+# Ton dossier monitoring est : /app/src/monitoring/monitoring.py
+
+from src.monitoring.monitoring import log_prediction, generate_metrics
+
 
 app = FastAPI(title="Fraud Detection API")
 
-@app.on_event("startup")
-def load_model_on_startup():
-    global model
-    model = load_model(MODEL_PATH)
+# ============================================================
+# 🔥 Chemins corrects pour Docker
+# ============================================================
+# __file__ => /app/src/api.py
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Ton modèle est dans : /app/src/model/model.pkl   (PAS "models")
+MODEL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
+
+# Fichier metrics (tu veux qu'il reste au même endroit que le modèle)
+METRICS_PATH = os.path.join(BASE_DIR, "model", "last_metrics.json")
 
 
+# ============================================================
+# 🔹 Load the model
+# ============================================================
+def load_model():
+    if not os.path.exists(MODEL_PATH):
+        print(f"⚠ Aucun modèle trouvé : {MODEL_PATH}")
+        return None
+
+    try:
+        model = joblib.load(MODEL_PATH)
+        print(f"✔ Modèle chargé : {MODEL_PATH}")
+        return model
+
+    except Exception as e:
+        print(f"❌ Erreur lors du chargement du modèle : {e}")
+        return None
+
+
+model = load_model()
+
+
+# ============================================================
+# 🔹 Load metrics
+# ============================================================
+def load_metrics():
+    if not os.path.exists(METRICS_PATH):
+        return {"message": "No metrics available yet."}
+
+    try:
+        with open(METRICS_PATH, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {"error": "Unable to read metrics file."}
+
+
+# ============================================================
+# 🔹 Pydantic schema
+# ============================================================
 class Transaction(BaseModel):
-    Time: float
-    Amount: float
-    V1: float
-    V2: float
-    V3: float
-    V4: float
-    V5: float
-    V6: float
-    V7: float
-    V8: float
-    V9: float
-    V10: float
-    V11: float
-    V12: float
-    V13: float
-    V14: float
-    V15: float
-    V16: float
-    V17: float
-    V18: float
-    V19: float
-    V20: float
-    V21: float
-    V22: float
-    V23: float
-    V24: float
-    V25: float
-    V26: float
-    V27: float
-    V28: float
+    features: list
 
 
-@app.post("/predict")
-def predict(data: Transaction):
-    pred, proba = predict_single(model, data.dict())
+# ============================================================
+# 🔹 Health check
+# ============================================================
+@app.get("/health")
+def health_check():
     return {
-        "prediction": int(pred),
-        "probability": float(proba)
+        "status": "ok",
+        "model_loaded": model is not None
+    }
+
+
+# ============================================================
+# 🔹 Version
+# ============================================================
+@app.get("/version")
+def model_version():
+    if os.path.exists(MODEL_PATH):
+        timestamp = os.path.getmtime(MODEL_PATH)
+        version = str(datetime.fromtimestamp(timestamp))
+    else:
+        version = "unknown"
+
+    return {
+        "model_version": version,
+        "last_metrics": load_metrics()
+    }
+
+
+# ============================================================
+# 🔹 Prediction endpoint
+# ============================================================
+@app.post("/predict")
+def predict(transaction: Transaction):
+
+    if model is None:
+        return {"error": "Model not loaded"}
+
+    try:
+        features = np.array(transaction.features).reshape(1, -1)
+        prediction = model.predict(features)[0]
+        proba = model.predict_proba(features)[0][1]
+
+    except Exception as e:
+        return {"error": f"Prediction failed: {e}"}
+
+    # Monitoring logging
+    try:
+        log_prediction(transaction.features, int(prediction), float(proba))
+    except Exception as e:
+        print(f"[Warning] Monitoring log failed: {e}")
+
+    return {
+        "fraud_prediction": int(prediction),
+        "fraud_probability": float(proba)
+    }
+
+
+# ============================================================
+# 🔹 Monitoring
+# ============================================================
+@app.get("/metrics")
+def metrics():
+    try:
+        return generate_metrics()
+    except Exception as e:
+        return {"error": f"Failed to load metrics: {e}"}
+
+
+# ============================================================
+# 🔹 Root
+# ============================================================
+@app.get("/")
+def root():
+    return {
+        "message": "Fraud Detection API running 🚀",
+        "endpoints": ["/predict", "/health", "/version", "/metrics"]
     }
