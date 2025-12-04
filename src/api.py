@@ -6,33 +6,24 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from datetime import datetime
 
-# ============================================================
-# 🔥 IMPORTANT : Correction du chemin d'import
-# ============================================================
-# Ton fichier est dans : /app/src/api.py
-# Ton dossier monitoring est : /app/src/monitoring/monitoring.py
-
+# Monitoring
 from src.monitoring.monitoring import log_prediction, generate_metrics
-
 
 app = FastAPI(title="Fraud Detection API")
 
-# ============================================================
-# 🔥 Chemins corrects pour Docker
-# ============================================================
-# __file__ => /app/src/api.py
+# ============================
+# Paths
+# ============================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Ton modèle est dans : /app/src/model/model.pkl   (PAS "models")
 MODEL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
-
-# Fichier metrics (tu veux qu'il reste au même endroit que le modèle)
 METRICS_PATH = os.path.join(BASE_DIR, "model", "last_metrics.json")
 
+USE_MLFLOW = os.getenv("USE_MLFLOW", "false").lower() == "true"
 
-# ============================================================
-# 🔹 Load the model
-# ============================================================
+
+# ============================
+# Load model
+# ============================
 def load_model():
     if not os.path.exists(MODEL_PATH):
         print(f"⚠ Aucun modèle trouvé : {MODEL_PATH}")
@@ -42,18 +33,23 @@ def load_model():
         model = joblib.load(MODEL_PATH)
         print(f"✔ Modèle chargé : {MODEL_PATH}")
         return model
-
     except Exception as e:
         print(f"❌ Erreur lors du chargement du modèle : {e}")
         return None
 
 
-model = load_model()
+# Hook appelé par FastAPI (vient du remote, on le garde)
+@app.on_event("startup")
+def startup_event():
+    global model
+    print("📦 Loading model…")
+    model = load_model()
+    print("✅ Model ready!")
 
 
-# ============================================================
-# 🔹 Load metrics
-# ============================================================
+# ============================
+# Load metrics
+# ============================
 def load_metrics():
     if not os.path.exists(METRICS_PATH):
         return {"message": "No metrics available yet."}
@@ -65,16 +61,16 @@ def load_metrics():
         return {"error": "Unable to read metrics file."}
 
 
-# ============================================================
-# 🔹 Pydantic schema
-# ============================================================
+# ============================
+# Pydantic schema
+# ============================
 class Transaction(BaseModel):
     features: list
 
 
-# ============================================================
-# 🔹 Health check
-# ============================================================
+# ============================
+# Health check
+# ============================
 @app.get("/health")
 def health_check():
     return {
@@ -83,9 +79,9 @@ def health_check():
     }
 
 
-# ============================================================
-# 🔹 Version
-# ============================================================
+# ============================
+# Version
+# ============================
 @app.get("/version")
 def model_version():
     if os.path.exists(MODEL_PATH):
@@ -100,9 +96,9 @@ def model_version():
     }
 
 
-# ============================================================
-# 🔹 Prediction endpoint
-# ============================================================
+# ============================
+# Prediction endpoint
+# ============================
 @app.post("/predict")
 def predict(transaction: Transaction):
 
@@ -129,9 +125,9 @@ def predict(transaction: Transaction):
     }
 
 
-# ============================================================
-# 🔹 Monitoring
-# ============================================================
+# ============================
+# Metrics
+# ============================
 @app.get("/metrics")
 def metrics():
     try:
@@ -140,9 +136,9 @@ def metrics():
         return {"error": f"Failed to load metrics: {e}"}
 
 
-# ============================================================
-# 🔹 Root
-# ============================================================
+# ============================
+# Root
+# ============================
 @app.get("/")
 def root():
     return {
