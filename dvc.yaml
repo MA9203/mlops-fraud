@@ -6,3 +6,20 @@ stages:
       - data/raw/creditcard.csv
     outs:
       - data/processed/creditcard_processed.csv
+
+  train:
+    cmd: python src/train_model.py
+    deps:
+      - src/train_model.py
+      - data/processed/creditcard_processed.csv
+    outs:
+      - src/model/model.pkl
+
+  evaluate:
+    cmd: python src/evaluate_model.py
+    deps:
+      - src/evaluate_model.py
+      - src/model/model.pkl
+      - data/processed/creditcard_processed.csv
+    outs:
+      - metrics.json
