@@ -1,45 +1,12 @@
-import requests
-import json
+from fastapi.testclient import TestClient
+from src.api import app
 
-url = "http://localhost:8000/predict"
+client = TestClient(app)
 
-sample = {
-    "Time": 100.0,
-    "V1": -1.359807134,
-    "V2": -0.072781173,
-    "V3": 2.536346738,
-    "V4": 1.378155224,
-    "V5": -0.33832077,
-    "V6": 0.462387778,
-    "V7": 0.239598554,
-    "V8": 0.098697901,
-    "V9": 0.363786969,
-    "V10": 0.090794172,
-    "V11": -0.551599533,
-    "V12": -0.617800856,
-    "V13": -0.991389847,
-    "V14": -0.311169354,
-    "V15": 1.468176972,
-    "V16": -0.470400525,
-    "V17": 0.207971242,
-    "V18": 0.02579058,
-    "V19": 0.40399296,
-    "V20": 0.251412098,
-    "V21": -0.018306777,
-    "V22": 0.277837575,
-    "V23": -0.11047391,
-    "V24": 0.066928075,
-    "V25": 0.128539358,
-    "V26": -0.189114844,
-    "V27": 0.133558377,
-    "V28": -0.021053053,
-    "Amount": 149.62
-}
+def test_predict_wrong_dim():
+    body = {"features": [0] * 10}  # mauvaise dimension
 
-print("Sending request...")
-response = requests.post(url, json=sample, timeout=10)
+    response = client.post("/predict", json=body)
 
-print("STATUS =", response.status_code)
-print("RAW =", response.text)
-
-print("\nParsed JSON =", response.json())
+    assert response.status_code == 400
+    assert "Invalid number of features" in response.json()["detail"]

@@ -27,3 +27,9 @@ def train():
 
 if __name__ == "__main__":
     train()
+    
+import json
+
+feature_names = X_train.columns.tolist()
+with open("src/model/feature_names.json", "w") as f:
+    json.dump(feature_names, f, indent=4)

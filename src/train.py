@@ -7,7 +7,7 @@ import mlflow.sklearn
 
 df = pd.read_csv("data/raw/creditcard.csv")
 
-X = df.drop("Class", axis=1)a
+X = df.drop("Class", axis=1)
 y = df["Class"]
 
 X_train, X_test, y_train, y_test = train_test_split(
