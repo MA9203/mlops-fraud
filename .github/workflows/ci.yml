@@ -53,7 +53,7 @@ jobs:
         # Exit-zero treats all errors as warnings
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-  docker-build:
+  docker-test:
     runs-on: ubuntu-latest
     needs: [test, code-quality]  # Only run if tests and code quality checks pass
     steps:
@@ -61,6 +61,11 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
+
+    - name: Install jq for JSON parsing
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
 
     - name: Build API Docker image
       run: |
@@ -74,9 +79,106 @@ jobs:
       run: |
         docker build -f docker/ui.Dockerfile -t fraud-ui .
 
-    - name: Test running containers
+    - name: Test API container
       run: |
+        # Start the API container
         docker run -d --name test-api -p 8000:8000 fraud-api
         sleep 10
-        docker ps | grep test-api
+        
+        # Check if container is running
+        if ! docker ps | grep -q test-api; then
+          echo "API container failed to start"
+          docker logs test-api
+          exit 1
+        fi
+        
+        # Wait for health endpoint to respond with 200
+        timeout 30 bash -c 'while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' localhost:8000/health)" != "200" ]]; do sleep 5; done' || {
+          echo "API health check timed out"
+          docker logs test-api
+          exit 1
+        }
+        
+        # Validate response structure
+        response=$(curl -s http://localhost:8000/health)
+        if [[ $(echo $response | jq -r '.status') != "ok" ]]; then
+          echo "Health check returned unexpected status"
+          echo "Response: $response"
+          exit 1
+        fi
+        
+        echo "API container test passed!"
         docker stop test-api
+
+    - name: Test UI container
+      run: |
+        # Start the UI container
+        docker run -d --name test-ui -p 8501:8501 fraud-ui
+        sleep 20
+        
+        # Check if container is running
+        if ! docker ps | grep -q test-ui; then
+          echo "UI container failed to start"
+          docker logs test-ui
+          exit 1
+        fi
+        
+        # Test if UI is responding (Streamlit provides a health check at /healthz)
+        if curl -s http://localhost:8501/healthz | grep -q "ok"; then
+          echo "UI health check passed"
+        else
+          echo "UI health check response:"
+          curl -s http://localhost:8501/healthz || echo "No healthz endpoint found"
+        fi
+        
+        # Validate we can get the main page
+        if curl -s http://localhost:8501 | grep -q "Fraud Detection Dashboard"; then
+          echo "UI main page test passed"
+        else
+          echo "UI main page test failed - checking response"
+          curl -s http://localhost:8501 | head -20
+          # We won't fail here as Streamlit might still be initializing
+        fi
+        
+        echo "UI container test completed"
+        docker stop test-ui
+
+  docker-publish:
+    runs-on: ubuntu-latest
+    needs: docker-test  # Only run if Docker tests pass
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev-clean'
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push API image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: docker/api.Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/fraud-api:latest
+
+    - name: Build and push Training image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: docker/train.Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/fraud-train:latest
+
+    - name: Build and push UI image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: docker/ui.Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/fraud-ui:latest

@@ -1,14 +1,15 @@
 name: CD Pipeline - Railway Deployment
 
 on:
-  push:
-    branches:
-      - dev-clean
-      - main
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+    branches: [main, dev-clean]
 
 jobs:
   deploy-api-staging:
-    if: github.ref == 'refs/heads/dev-clean'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'dev-clean'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -21,7 +22,7 @@ jobs:
           service: fraud-api-service
           
   deploy-ui-staging:
-    if: github.ref == 'refs/heads/dev-clean'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'dev-clean'
     runs-on: ubuntu-latest
     needs: deploy-api-staging
     steps:
@@ -35,7 +36,7 @@ jobs:
           service: fraud-ui-service
           
   deploy-api-production:
-    if: github.ref == 'refs/heads/main'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -48,7 +49,7 @@ jobs:
           service: fraud-api-service
           
   deploy-ui-production:
-    if: github.ref == 'refs/heads/main'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     needs: deploy-api-production
     steps:

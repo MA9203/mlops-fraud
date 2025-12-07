@@ -2,6 +2,10 @@ import streamlit as st
 import requests
 import pandas as pd
 
+# Add a simple health check endpoint
+# This would typically be handled by a separate lightweight server
+# For now, we'll just rely on the container starting successfully
+
 API_URL = "http://api:8000"
 
 # ============================================================
