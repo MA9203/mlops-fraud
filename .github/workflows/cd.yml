@@ -1,0 +1,34 @@
+name: CD Pipeline - Railway Deployment
+
+on:
+  push:
+    branches:
+      - dev-clean
+      - main
+
+jobs:
+  deploy-staging:
+    if: github.ref == 'refs/heads/dev-clean'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Railway Staging
+        uses: railwayapp/action@v1
+        with:
+          railway-token: ${{ secrets.RAILWAY_STAGING_TOKEN }}
+          service: ${{ secrets.RAILWAY_SERVICE_NAME }}
+          
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Railway Production
+        uses: railwayapp/action@v1
+        with:
+          railway-token: ${{ secrets.RAILWAY_PRODUCTION_TOKEN }}
+          service: ${{ secrets.RAILWAY_SERVICE_NAME }}
