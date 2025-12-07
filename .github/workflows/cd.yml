@@ -7,28 +7,56 @@ on:
       - main
 
 jobs:
-  deploy-staging:
+  deploy-api-staging:
     if: github.ref == 'refs/heads/dev-clean'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Deploy to Railway Staging
+      - name: Deploy API to Railway Staging
         uses: railwayapp/action@v1
         with:
           railway-token: ${{ secrets.RAILWAY_STAGING_TOKEN }}
-          service: ${{ secrets.RAILWAY_SERVICE_NAME }}
+          service: fraud-api-service
           
-  deploy-production:
+  deploy-ui-staging:
+    if: github.ref == 'refs/heads/dev-clean'
+    runs-on: ubuntu-latest
+    needs: deploy-api-staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy UI to Railway Staging
+        uses: railwayapp/action@v1
+        with:
+          railway-token: ${{ secrets.RAILWAY_STAGING_TOKEN }}
+          service: fraud-ui-service
+          
+  deploy-api-production:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Deploy to Railway Production
+      - name: Deploy API to Railway Production
         uses: railwayapp/action@v1
         with:
           railway-token: ${{ secrets.RAILWAY_PRODUCTION_TOKEN }}
-          service: ${{ secrets.RAILWAY_SERVICE_NAME }}
+          service: fraud-api-service
+          
+  deploy-ui-production:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: deploy-api-production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy UI to Railway Production
+        uses: railwayapp/action@v1
+        with:
+          railway-token: ${{ secrets.RAILWAY_PRODUCTION_TOKEN }}
+          service: fraud-ui-service
