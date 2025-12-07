@@ -16,3 +16,39 @@ stages:
       hash: md5
       md5: 4b81435690147d1e624a8b06c5520629
       size: 155302541
+  train:
+    cmd: python src/train_model.py
+    deps:
+    - path: data/processed/creditcard_processed.csv
+      hash: md5
+      md5: 4b81435690147d1e624a8b06c5520629
+      size: 155302541
+    - path: src/train_model.py
+      hash: md5
+      md5: f58a614d97fbaa268b4b3897dfb158e8
+      size: 678
+    outs:
+    - path: src/model/model.pkl
+      hash: md5
+      md5: ba1a0a03bb2f5fc052826782cd15e91f
+      size: 1535
+  evaluate:
+    cmd: python src/evaluate_model.py
+    deps:
+    - path: data/processed/creditcard_processed.csv
+      hash: md5
+      md5: 4b81435690147d1e624a8b06c5520629
+      size: 155302541
+    - path: src/evaluate_model.py
+      hash: md5
+      md5: bfcb365d3b732b8e11926e66e0cd51eb
+      size: 950
+    - path: src/model/model.pkl
+      hash: md5
+      md5: ba1a0a03bb2f5fc052826782cd15e91f
+      size: 1535
+    outs:
+    - path: metrics.json
+      hash: md5
+      md5: 679bb2b0d4ca316224c5f75066158757
+      size: 39
