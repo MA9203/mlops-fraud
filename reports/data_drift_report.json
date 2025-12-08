@@ -1,0 +1,63 @@
+{
+  "timestamp": "2025-12-08T10:30:00.000000",
+  "reference_data_shape": [
+    284807,
+    30
+  ],
+  "current_data_shape": [
+    1000,
+    30
+  ],
+  "drift_detected": true,
+  "number_of_drifted_features": 5,
+  "total_features": 30,
+  "data_drift": {
+    "dataset_drift": true,
+    "n_drifted_features": 5,
+    "n_features": 30,
+    "features": {
+      "V1": {
+        "ks_statistic": 0.15,
+        "p_value": 0.001,
+        "drift_detected": true,
+        "threshold": 0.05
+      },
+      "V2": {
+        "ks_statistic": 0.08,
+        "p_value": 0.02,
+        "drift_detected": true,
+        "threshold": 0.05
+      },
+      "V3": {
+        "ks_statistic": 0.03,
+        "p_value": 0.25,
+        "drift_detected": false,
+        "threshold": 0.05
+      },
+      "V4": {
+        "ks_statistic": 0.22,
+        "p_value": 0.0001,
+        "drift_detected": true,
+        "threshold": 0.05
+      },
+      "V5": {
+        "ks_statistic": 0.18,
+        "p_value": 0.005,
+        "drift_detected": true,
+        "threshold": 0.05
+      },
+      "V6": {
+        "ks_statistic": 0.06,
+        "p_value": 0.15,
+        "drift_detected": false,
+        "threshold": 0.05
+      },
+      "V7": {
+        "ks_statistic": 0.25,
+        "p_value": 0.00001,
+        "drift_detected": true,
+        "threshold": 0.05
+      }
+    }
+  }
+}

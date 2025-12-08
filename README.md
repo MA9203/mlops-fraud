@@ -64,5 +64,32 @@ python src/monitoring/scheduled_model_monitoring.py
 curl -X POST http://localhost:8000/monitoring/model/check
 ```
 
+## 📦 Stockage des requêtes en production
+Pour monitorer le modèle en production, toutes les requêtes sont sauvegardées :
+
+### Fonctionnalités
+- **Stockage individuel** : Chaque requête est enregistrée dans un fichier séparé
+- **Structure organisée** : Fichiers stockés dans `logs/requests/` avec horodatage
+- **Format standardisé** : Chaque fichier contient timestamp, features, prédiction et probabilité
+
+### Structure des logs
+```
+logs/
+└── requests/
+    ├── 20251208_103045_123456.json
+    ├── 20251208_103046_789012.json
+    └── ...
+```
+
+### Contenu d'un fichier de log
+```json
+{
+    "timestamp": "2025-12-08T10:30:45.123456",
+    "features": [0.1, 0.2, 0.3, ..., 1.0],
+    "prediction": 1,
+    "probability": 0.95
+}
+```
+
 ## 📂 Structure du projet
 Voir l'arborescence dans la documentation.

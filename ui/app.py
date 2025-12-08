@@ -2,12 +2,12 @@ import streamlit as st
 import requests
 import pandas as pd
 import json
+import plotly.express as px
+import plotly.graph_objects as go
+import os
 
-# Add a simple health check endpoint
-# This would typically be handled by a separate lightweight server
-# For now, we'll just rely on the container starting successfully
-
-API_URL = "http://api:8000"
+# Use localhost when running locally, api when running in Docker
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 # ============================================================
 # 🔹 App UI
@@ -80,9 +80,6 @@ if menu == "Monitoring":
     # ---- Convert dict to DataFrame ----
     df = pd.DataFrame([data])
 
-    st.subheader("📄 Raw Monitoring Data")
-    st.dataframe(df)
-
     # -------------------------
     # 📌 Basic KPIs
     # -------------------------
@@ -101,6 +98,29 @@ if menu == "Monitoring":
 
     with col4:
         st.metric("Avg Probability", f"{df['average_probability'][0]:.6f}")
+
+    # -------------------------
+    # 📈 Drift Visualization Over Time
+    # -------------------------
+    st.subheader("📈 Drift Visualization Over Time")
+    
+    # Try to load historical drift data
+    try:
+        # Check if we have data drift reports
+        if os.path.exists("reports/data_drift_report.json"):
+            with open("reports/data_drift_report.json", "r") as f:
+                drift_data = json.load(f)
+            
+            # Create a simple visualization of drift over time
+            st.info("Historical drift data visualization would appear here in a production environment.")
+            st.write("In a full implementation, this would show:")
+            st.write("- Feature drift trends over time")
+            st.write("- Statistical significance of drift")
+            st.write("- Alert thresholds")
+        else:
+            st.info("No historical drift data available yet. Run drift analysis to generate reports.")
+    except Exception as e:
+        st.warning(f"Could not load historical drift data: {str(e)}")
 
 # ============================================================
 # 🔹 Data Drift Monitoring Page
@@ -149,8 +169,60 @@ if menu == "Data Drift":
     st.subheader("Latest Drift Report")
     try:
         report = requests.get(f"{API_URL}/monitoring/drift/report").json()
-        st.json(report)
-    except:
+        
+        # Extract drift details for visualization
+        if "data_drift" in report and "features" in report["data_drift"]:
+            features_data = report["data_drift"]["features"]
+            
+            # Create DataFrame for visualization
+            features_df = pd.DataFrame([
+                {
+                    "Feature": feature,
+                    "KS Statistic": details.get("ks_statistic", 0),
+                    "P-Value": details.get("p_value", 1),
+                    "Drift Detected": details.get("drift_detected", False)
+                }
+                for feature, details in features_data.items()
+                if "error" not in details
+            ])
+            
+            if not features_df.empty:
+                # Heatmap-like visualization using bar chart
+                st.subheader("📊 Feature Drift Visualization")
+                
+                # Color coding for drift detection
+                features_df["Color"] = features_df["Drift Detected"].map({True: "Drift Detected", False: "No Drift"})
+                
+                # Bar chart showing KS statistics
+                fig_ks = px.bar(
+                    features_df, 
+                    x="Feature", 
+                    y="KS Statistic", 
+                    color="Color",
+                    title="KS Statistic by Feature (Higher values indicate more drift)",
+                    color_discrete_map={"Drift Detected": "red", "No Drift": "green"}
+                )
+                st.plotly_chart(fig_ks, use_container_width=True)
+                
+                # Bar chart showing P-values
+                fig_p = px.bar(
+                    features_df, 
+                    x="Feature", 
+                    y="P-Value", 
+                    color="Color",
+                    title="P-Values by Feature (Values below threshold indicate drift)",
+                    color_discrete_map={"Drift Detected": "red", "No Drift": "green"}
+                )
+                st.plotly_chart(fig_p, use_container_width=True)
+                
+                # Show the raw data
+                st.subheader("📋 Detailed Drift Data")
+                st.dataframe(features_df)
+            else:
+                st.info("No feature drift data available for visualization")
+        else:
+            st.json(report)
+    except Exception as e:
         st.info("No drift report available. Run analysis first.")
 
 # ============================================================
@@ -216,6 +288,35 @@ if menu == "Model Drift":
     st.subheader("Latest Model Drift Report")
     try:
         report = requests.get(f"{API_URL}/monitoring/model/report").json()
-        st.json(report)
+        
+        # Create visualization of model metrics over time
+        st.subheader("📈 Model Performance Trends")
+        
+        # Extract metrics for visualization
+        if "production_metrics" in report:
+            prod_metrics = report["production_metrics"]
+            
+            # Create metrics dataframe
+            metrics_data = []
+            for key, value in prod_metrics.items():
+                if isinstance(value, (int, float)) and key not in ["total_predictions"]:
+                    metrics_data.append({"Metric": key, "Value": value})
+            
+            if metrics_data:
+                metrics_df = pd.DataFrame(metrics_data)
+                
+                # Bar chart of current metrics
+                fig_metrics = px.bar(
+                    metrics_df,
+                    x="Metric",
+                    y="Value",
+                    title="Current Model Performance Metrics"
+                )
+                st.plotly_chart(fig_metrics, use_container_width=True)
+            
+            # Show detailed report
+            st.json(report)
+        else:
+            st.json(report)
     except:
         st.info("No model drift report available. Run analysis first.")
