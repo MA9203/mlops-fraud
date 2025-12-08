@@ -1,95 +1,307 @@
-﻿# MLOps Project – Credit Card Fraud Detection
+# MLOps Project – Credit Card Fraud Detection
 
-## 🎯 Objectif
-Construire un pipeline complet MLOps pour détecter les transactions frauduleuses :
-- Versioning des données (DVC)
-- Tracking des expériences (MLflow)
-- API de prédiction (FastAPI)
-- Déploiement (Docker + CI/CD)
-- Monitoring & drift detection (Prometheus, Evidently)
+## 🎯 Project Objective
 
-## 📊 Problème métier
-Identifier automatiquement si une transaction bancaire est potentiellement frauduleuse.
+Build a complete MLOps pipeline to automatically detect fraudulent credit card transactions using machine learning techniques. This project demonstrates best practices in data versioning, experiment tracking, model deployment, and production monitoring.
 
-## 🧪 Métriques principales
-- AUC-ROC
-- Recall (classe fraude)
-- Precision-Recall AUC
+## 🏗️ Architecture Overview
 
-## 🔍 Data Drift Monitoring
-Ce projet utilise Evidently AI pour surveiller le dérive des données :
+```mermaid
+graph TD
+    A[Raw Data] --> B[Data Preprocessing]
+    B --> C[Model Training]
+    C --> D[Model Evaluation]
+    D --> E[Model Registry]
+    E --> F[Production API]
+    F --> G[Streamlit UI]
+    F --> H[Monitoring System]
+    H --> I[Evidently Reports]
+    I --> J[Alerts & Dashboards]
+    K[New Transactions] --> F
+    F --> L[Real-time Predictions]
+    L --> H
+```
 
-### Fonctionnalités
-- **Feature Drift Detection** : Surveillance des changements dans les caractéristiques des données
-- **Distribution Drift** : Détection des changements dans les distributions de données
-- **Concept Drift** : Identification des changements dans les relations entre les features et la cible
-- **Model Performance Monitoring** : Suivi des performances du modèle en production
+## 🔗 Pipeline Components
 
-### Composants
-1. **Script de monitoring** : [src/monitoring/data_drift.py](file:///c:/Users/GIGABYTE/mlops-fraud/src/monitoring/data_drift.py)
-2. **Rapports automatiques** : Générés quotidiennement ou à chaque nouvelle donnée
-3. **Dashboard HTML** : Visualisation interactive des dérives détectées
-4. **Export JSON** : Données structurées pour l'intégration système
+### 1. Data Version Control (DVC)
+- **Purpose**: Track and version datasets throughout the ML lifecycle
+- **Workflow**:
+  - Raw data stored in `data/raw/creditcard.csv`
+  - Preprocessing pipeline defined in `dvc.yaml`
+  - Processed data versioned in `data/processed/creditcard_processed.csv`
+  - Reproducible data pipeline with `dvc repro`
 
-### Utilisation
+### 2. Experiment Tracking (MLflow)
+- **Purpose**: Track model experiments, parameters, and metrics
+- **Features**:
+  - Automatic logging of hyperparameters and metrics
+  - Model registry for version control
+  - UI dashboard for experiment comparison
+  - Integration with training pipeline
+
+### 3. Model Training
+- **Algorithm**: Logistic Regression (baseline model)
+- **Features**: 30 PCA-transformed features + normalized Amount
+- **Metrics**: ROC-AUC, Precision-Recall AUC
+- **Validation**: Stratified train/test split (80/20)
+
+### 4. API Service (FastAPI)
+- **Framework**: FastAPI for high-performance REST API
+- **Endpoints**:
+  - `/predict` - Real-time fraud prediction
+  - `/health` - Service health check
+  - `/metrics` - Model performance metrics
+  - `/monitoring/*` - Drift detection endpoints
+
+### 5. Monitoring & Drift Detection (Evidently)
+- **Data Drift**: Statistical tests for feature distribution changes
+- **Model Drift**: Performance degradation detection
+- **Reports**: Automated JSON and HTML reports
+- **Visualization**: Interactive dashboards
+
+### 6. CI/CD Pipeline (GitHub Actions)
+- **Continuous Integration**: Automated testing and code quality checks
+- **Continuous Deployment**: Automatic deployment to Railway
+- **Branch Strategy**: 
+  - `dev-clean` → Staging environment
+  - `main` → Production environment
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.10+
+- Docker & Docker Compose
+- Git
+- DVC (Data Version Control)
+
+### Local Development Setup
+
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd mlops-fraud
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   pip install -r src/model/requirements.txt
+   pip install -r ui/requirements.txt
+   ```
+
+3. **Initialize DVC**:
+   ```bash
+   dvc init
+   dvc pull  # Download processed data
+   ```
+
+4. **Start services locally**:
+   ```bash
+   # Terminal 1: Start API
+   uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
+   
+   # Terminal 2: Start UI
+   streamlit run ui/app.py --server.port 8501
+   ```
+
+### Docker Deployment
+
+1. **Build and run with Docker Compose**:
+   ```bash
+   docker-compose up --build
+   ```
+
+2. **Access services**:
+   - API: http://localhost:8000
+   - UI: http://localhost:8501
+   - MLflow: http://localhost:5000
+
+### Individual Docker Images
+
+Build specific services:
 ```bash
-# Exécuter manuellement le monitoring
-python src/monitoring/scheduled_monitoring.py
+# Build API
+docker build -f docker/api.Dockerfile -t fraud-api .
 
-# Via l'API
+# Build UI
+docker build -f docker/ui.Dockerfile -t fraud-ui .
+
+# Build Training
+docker build -f docker/train.Dockerfile -t fraud-train .
+```
+
+## 🔍 API Usage
+
+### Health Check
+```bash
+curl -X GET http://localhost:8000/health
+```
+
+### Fraud Prediction
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "features": [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8, 0.9, -1.0, 
+                 1.1, -1.2, 1.3, -1.4, 1.5, -1.6, 1.7, -1.8, 1.9, -2.0, 
+                 2.1, -2.2, 2.3, -2.4, 2.5, -2.6, 2.7, -2.8, 2.9, -3.0]
+  }'
+```
+
+### Get Metrics
+```bash
+curl -X GET http://localhost:8000/metrics
+```
+
+### Run Data Drift Check
+```bash
 curl -X POST http://localhost:8000/monitoring/drift/check
 ```
 
-## 🤖 Model Drift Monitoring
-Surveillance de la dégradation des performances du modèle en production :
-
-### Fonctionnalités
-- **Probability Anomaly Detection** : Détection des probabilités anormales
-- **Prediction Drift** : Surveillance des changements dans les prédictions
-- **Model Aging Detection** : Détection du vieillissement du modèle
-- **Performance Comparison** : Comparaison des scores moyens avec les références
-
-### Composants
-1. **Script de monitoring** : [src/monitoring/model_drift.py](file:///c:/Users/GIGABYTE/mlops-fraud/src/monitoring/model_drift.py)
-2. **Score de référence** : ROC-AUC calculé lors de l'évaluation du modèle
-3. **Analyse des dernières prédictions** : Calcul des métriques sur les données de production
-4. **Alertes automatiques** : Notifications en cas de dérive significative
-
-### Utilisation
+### Run Model Drift Check
 ```bash
-# Exécuter manuellement le monitoring
-python src/monitoring/scheduled_model_monitoring.py
-
-# Via l'API
 curl -X POST http://localhost:8000/monitoring/model/check
 ```
 
-## 📦 Stockage des requêtes en production
-Pour monitorer le modèle en production, toutes les requêtes sont sauvegardées :
+## 🖥️ Streamlit UI Usage
 
-### Fonctionnalités
-- **Stockage individuel** : Chaque requête est enregistrée dans un fichier séparé
-- **Structure organisée** : Fichiers stockés dans `logs/requests/` avec horodatage
-- **Format standardisé** : Chaque fichier contient timestamp, features, prédiction et probabilité
+1. **Access the dashboard**: Open http://localhost:8501 in your browser
+2. **Navigation**:
+   - **Prediction**: Enter transaction features for fraud prediction
+   - **Monitoring**: View real-time model performance metrics
+   - **Data Drift**: Analyze feature distribution changes
+   - **Model Drift**: Monitor model performance degradation
 
-### Structure des logs
+## 📊 Monitoring with Evidently
+
+### Data Drift Detection
+- **Method**: Kolmogorov-Smirnov test for each feature
+- **Threshold**: p-value < 0.05 indicates drift
+- **Reporting**: Automated JSON and HTML reports
+- **Visualization**: Interactive feature drift charts
+
+### Model Drift Detection
+- **Metrics Monitored**:
+  - ROC-AUC score changes
+  - Fraud prediction rate shifts
+  - Average prediction probability variations
+  - Abnormal probability detections
+- **Alerting**: Automatic drift detection with detailed reports
+
+### Request Logging
+All production predictions are logged in `logs/requests/` with:
+- Timestamp
+- Input features
+- Model prediction
+- Prediction probability
+
+## 🔄 CI/CD Pipeline
+
+### Continuous Integration
+Triggered on push/PR to `main` or `dev-clean`:
+1. **Testing**: Pytest execution across Python 3.10 and 3.11
+2. **Code Quality**: Flake8 linting and style checks
+3. **Docker Tests**: Container build and health checks
+
+### Continuous Deployment
+Automatic deployment to Railway:
+- **Staging**: Push to `dev-clean` branch
+- **Production**: Push to `main` branch
+- **Services**: API and UI deployed separately
+
+## 📁 Project Structure
 ```
-logs/
-└── requests/
-    ├── 20251208_103045_123456.json
-    ├── 20251208_103046_789012.json
-    └── ...
+mlops-fraud/
+├── data/
+│   ├── raw/              # Original datasets
+│   └── processed/        # Preprocessed datasets
+├── src/
+│   ├── api.py           # FastAPI service
+│   ├── train.py         # Model training
+│   ├── data_preprocess.py # Data preprocessing
+│   ├── evaluate_model.py # Model evaluation
+│   ├── model/           # Trained model artifacts
+│   └── monitoring/      # Drift detection scripts
+├── ui/
+│   ├── app.py           # Streamlit dashboard
+│   └── requirements.txt # UI dependencies
+├── docker/              # Docker configuration files
+├── .github/workflows/   # CI/CD pipelines
+├── tests/               # Unit and integration tests
+├── logs/                # Production request logs
+├── reports/             # Monitoring reports
+├── mlruns/             # MLflow experiment data
+└── dvc.yaml            # DVC pipeline definition
 ```
 
-### Contenu d'un fichier de log
-```json
-{
-    "timestamp": "2025-12-08T10:30:45.123456",
-    "features": [0.1, 0.2, 0.3, ..., 1.0],
-    "prediction": 1,
-    "probability": 0.95
-}
+## 🛠️ Development Commands
+
+### Data Pipeline
+```bash
+# Reproduce entire pipeline
+dvc repro
+
+# Push data to remote storage
+dvc push
+
+# Pull data from remote storage
+dvc pull
 ```
 
-## 📂 Structure du projet
-Voir l'arborescence dans la documentation.
+### Model Training
+```bash
+# Train model locally
+python src/train_model.py
+
+# Evaluate model
+python src/evaluate_model.py
+```
+
+### Testing
+```bash
+# Run unit tests
+pytest tests/
+
+# Run specific test file
+pytest tests/test_api.py
+```
+
+### Code Quality
+```bash
+# Linting
+flake8 .
+
+# Formatting (if black is installed)
+black .
+```
+
+## 🌐 Production Deployment
+
+### Railway Deployment
+- **API Service**: [https://fraud-api-production.up.railway.app](https://fraud-api-production.up.railway.app)
+- **UI Service**: [https://fraud-ui-production.up.railway.app](https://fraud-ui-production.up.railway.app)
+
+### Monitoring Endpoints
+- **Health Check**: `/health`
+- **Metrics**: `/metrics`
+- **Data Drift**: `/monitoring/drift/check`
+- **Model Drift**: `/monitoring/model/check`
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Dataset provided by Kaggle
+- Powered by FastAPI, Streamlit, MLflow, and Evidently
+- Built with ❤️ using modern MLOps practices

@@ -3,6 +3,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 import joblib
 import os
+import json
 
 DATA = "data/processed/creditcard_processed.csv"
 MODEL_OUT = "src/model/model.pkl"
@@ -23,13 +24,11 @@ def train():
 
     os.makedirs("src/model", exist_ok=True)
     joblib.dump(model, MODEL_OUT)
+    # Save feature names
+    feature_names = X_train.columns.tolist()
+    with open("src/model/feature_names.json", "w") as f:
+        json.dump(feature_names, f, indent=4)
 
 
 if __name__ == "__main__":
     train()
-    
-import json
-
-feature_names = X_train.columns.tolist()
-with open("src/model/feature_names.json", "w") as f:
-    json.dump(feature_names, f, indent=4)

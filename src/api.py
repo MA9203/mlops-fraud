@@ -3,7 +3,6 @@ import joblib
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import json
-from datetime import datetime
 
 # Import only basic monitoring functions (no Evidently dependencies)
 from src.monitoring.monitoring import log_prediction, generate_metrics
@@ -66,10 +65,8 @@ def health_check():
 
 @app.post("/predict")
 def predict(transaction: Transaction):
-    global model, feature_names
-
     if model is None:
-        # 🔥 Solution pour les tests : charger automatiquement si nécessaire
+        # Load model automatically if needed
         load_model()
 
     X = transaction.features
@@ -77,7 +74,8 @@ def predict(transaction: Transaction):
     if len(X) != len(feature_names):
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid number of features: got {len(X)}, expected {len(feature_names)}"
+            detail=f"Invalid number of features: got {len(X)}, "
+                   f"expected {len(feature_names)}"
         )
 
     try:
@@ -144,10 +142,8 @@ def get_drift_report():
                 status_code=404,
                 detail="No drift report found. Run drift detection first."
             )
-        
         with open(report_path, 'r') as f:
             report = json.load(f)
-        
         return report
     except Exception as e:
         raise HTTPException(
@@ -179,12 +175,11 @@ def get_model_drift_report():
         if not os.path.exists(report_path):
             raise HTTPException(
                 status_code=404,
-                detail="No model drift report found. Run model drift detection first."
+                detail="No model drift report found. "
+                       "Run model drift detection first."
             )
-        
         with open(report_path, 'r') as f:
             report = json.load(f)
-        
         return report
     except Exception as e:
         raise HTTPException(
