@@ -24,7 +24,7 @@ st.title("💳 Fraud Detection Dashboard")
 # ============================================================
 menu = st.sidebar.radio(
     "Navigation",
-    ["Prediction", "Monitoring", "Data Drift"]
+    ["Prediction", "Monitoring", "Data Drift", "Model Drift"]
 )
 
 # ============================================================
@@ -152,3 +152,70 @@ if menu == "Data Drift":
         st.json(report)
     except:
         st.info("No drift report available. Run analysis first.")
+
+# ============================================================
+# 🔹 Model Drift Monitoring Page
+# ============================================================
+if menu == "Model Drift":
+    st.header("🤖 Model Drift Monitoring")
+    
+    st.markdown("""
+    This section monitors model drift by comparing current predictions with reference metrics.
+    Model drift can indicate when the model's performance is degrading.
+    """)
+    
+    # Button to trigger model drift detection
+    if st.button("Run Model Drift Analysis 🔄"):
+        try:
+            with st.spinner("Running model drift analysis..."):
+                # Trigger model drift detection
+                response = requests.post(f"{API_URL}/monitoring/model/check").json()
+                
+            st.success("Model drift analysis completed!")
+            
+            # Display results
+            st.metric("Model Drift Detected", "Yes" if response["drift_detected"] else "No")
+            
+            # Show detailed metrics comparison
+            st.subheader("Metrics Comparison")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Reference Metrics**")
+                ref_metrics = response["reference_metrics"]
+                for key, value in ref_metrics.items():
+                    st.write(f"{key}: {value:.6f}")
+            
+            with col2:
+                st.markdown("**Production Metrics**")
+                prod_metrics = response["production_metrics"]
+                for key, value in prod_metrics.items():
+                    if isinstance(value, (int, float)):
+                        st.write(f"{key}: {value:.6f}")
+                    else:
+                        st.write(f"{key}: {value}")
+            
+            # Show drift details
+            st.subheader("Drift Details")
+            drift_details = response["drift_details"]
+            for metric, details in drift_details.items():
+                if details.get("drift_detected", False):
+                    st.warning(f"⚠️ {metric}: Drift detected")
+                    if "difference" in details:
+                        st.write(f"  Difference: {details['difference']:.6f}")
+                    if "change_ratio" in details:
+                        st.write(f"  Change ratio: {details['change_ratio']:.6f}")
+                else:
+                    st.success(f"✅ {metric}: No drift detected")
+                    
+        except Exception as e:
+            st.error(f"Failed to run model drift analysis: {str(e)}")
+    
+    # Show latest model drift report if available
+    st.subheader("Latest Model Drift Report")
+    try:
+        report = requests.get(f"{API_URL}/monitoring/model/report").json()
+        st.json(report)
+    except:
+        st.info("No model drift report available. Run analysis first.")

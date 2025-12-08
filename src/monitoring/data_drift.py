@@ -3,11 +3,7 @@ import numpy as np
 import os
 import json
 from datetime import datetime
-from evidently.pipeline.column_mapping import ColumnMapping
-from evidently.model_profile import Profile
-from evidently.model_profile.sections import DataDriftProfileSection, CatTargetDriftProfileSection
-from evidently.dashboard import Dashboard
-from evidently.dashboard.tabs import DataDriftTab
+from scipy import stats
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -48,32 +44,114 @@ def load_current_data():
     current_df = pd.DataFrame(features_list, columns=feature_names)
     return current_df
 
+def ks_test_drift(reference_data, current_data, threshold=0.05):
+    """Perform Kolmogorov-Smirnov test for drift detection"""
+    drift_results = {}
+    drifted_features = 0
+    
+    for column in reference_data.columns:
+        if column in current_data.columns:
+            # Perform KS test
+            try:
+                ks_statistic, p_value = stats.ks_2samp(
+                    reference_data[column].dropna(), 
+                    current_data[column].dropna()
+                )
+                
+                # Drift detected if p-value < threshold
+                drift_detected = p_value < threshold
+                
+                drift_results[column] = {
+                    "ks_statistic": float(ks_statistic),
+                    "p_value": float(p_value),
+                    "drift_detected": drift_detected,
+                    "threshold": threshold
+                }
+                
+                if drift_detected:
+                    drifted_features += 1
+                    
+            except Exception as e:
+                drift_results[column] = {
+                    "error": str(e),
+                    "drift_detected": False
+                }
+    
+    return drift_results, drifted_features
+
 def detect_feature_drift(reference_data, current_data):
     """Detect feature drift between reference and current data"""
-    # Define column mapping for Evidently
-    column_mapping = ColumnMapping()
-    column_mapping.numerical_features = reference_data.columns.tolist()
+    # Perform KS test for drift detection
+    drift_details, n_drifted_features = ks_test_drift(reference_data, current_data)
     
-    # Create data drift profile
-    data_drift_profile = Profile(sections=[DataDriftProfileSection()])
-    data_drift_profile.calculate(reference_data, current_data, column_mapping=column_mapping)
+    # Overall drift detection (if any feature shows drift)
+    dataset_drift = n_drifted_features > 0
     
-    # Get results
-    drift_results = data_drift_profile.json()
-    return json.loads(drift_results)
+    results = {
+        "data_drift": {
+            "dataset_drift": dataset_drift,
+            "n_drifted_features": n_drifted_features,
+            "n_features": len(reference_data.columns),
+            "features": drift_details
+        }
+    }
+    
+    return results
 
-def generate_data_drift_dashboard(reference_data, current_data, output_path):
-    """Generate HTML dashboard for data drift visualization"""
-    # Define column mapping
-    column_mapping = ColumnMapping()
-    column_mapping.numerical_features = reference_data.columns.tolist()
+def generate_simple_report(reference_data, current_data, output_path):
+    """Generate a simple HTML report for data drift"""
+    drift_results, _ = ks_test_drift(reference_data, current_data)
     
-    # Create dashboard
-    dashboard = Dashboard(tabs=[DataDriftTab()])
-    dashboard.calculate(reference_data, current_data, column_mapping=column_mapping)
-    dashboard.save(output_path)
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Data Drift Report</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .drift { background-color: #ffcccc; }
+            .no-drift { background-color: #ccffcc; }
+        </style>
+    </head>
+    <body>
+        <h1>Data Drift Report</h1>
+        <h2>Summary</h2>
+        <p>Generated on: {timestamp}</p>
+        <table>
+            <tr>
+                <th>Feature</th>
+                <th>KS Statistic</th>
+                <th>P-Value</th>
+                <th>Drift Detected</th>
+            </tr>
+    """.format(timestamp=datetime.now().isoformat())
     
-    print(f"Data drift dashboard saved to {output_path}")
+    for feature, results in drift_results.items():
+        if "error" not in results:
+            css_class = "drift" if results["drift_detected"] else "no-drift"
+            html_content += f"""
+            <tr class="{css_class}">
+                <td>{feature}</td>
+                <td>{results['ks_statistic']:.4f}</td>
+                <td>{results['p_value']:.4f}</td>
+                <td>{'Yes' if results['drift_detected'] else 'No'}</td>
+            </tr>
+            """
+    
+    html_content += """
+        </table>
+    </body>
+    </html>
+    """
+    
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, 'w') as f:
+        f.write(html_content)
+    
+    print(f"Data drift report saved to {output_path}")
 
 def save_drift_report(report_data, output_path):
     """Save drift report as JSON"""
@@ -113,16 +191,22 @@ def run_data_drift_monitoring():
         save_drift_report(drift_report, DATA_DRIFT_REPORT_JSON)
         
         # Generate HTML dashboard
-        generate_data_drift_dashboard(reference_data, current_data, DATA_DRIFT_REPORT_HTML)
+        generate_simple_report(reference_data, current_data, DATA_DRIFT_REPORT_HTML)
+        
+        # Extract summary information
+        data_drift = drift_report.get("data_drift", {})
+        drift_detected = data_drift.get("dataset_drift", False)
+        n_drifted_features = data_drift.get("n_drifted_features", 0)
+        n_features = data_drift.get("n_features", 0)
         
         # Print summary
         drift_summary = {
             "timestamp": datetime.now().isoformat(),
             "reference_data_shape": reference_data.shape,
             "current_data_shape": current_data.shape,
-            "drift_detected": drift_report.get("data_drift", {}).get("data_drift_detected", False),
-            "number_of_drifted_features": drift_report.get("data_drift", {}).get("n_drifted_features", 0),
-            "total_features": drift_report.get("data_drift", {}).get("n_features", 0)
+            "drift_detected": drift_detected,
+            "number_of_drifted_features": n_drifted_features,
+            "total_features": n_features
         }
         
         print("\n=== Data Drift Monitoring Summary ===")

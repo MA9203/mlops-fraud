@@ -9,8 +9,10 @@ RUN apt-get update && apt-get install -y \
 
 # Copy only the requirements for the UI first
 COPY ui/requirements.txt .
+COPY requirements.txt requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r ui/requirements.txt
 
 # Copy the entire project (so Streamlit can access ui/app.py)
 COPY . .

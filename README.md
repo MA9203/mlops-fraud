@@ -40,5 +40,29 @@ python src/monitoring/scheduled_monitoring.py
 curl -X POST http://localhost:8000/monitoring/drift/check
 ```
 
+## 🤖 Model Drift Monitoring
+Surveillance de la dégradation des performances du modèle en production :
+
+### Fonctionnalités
+- **Probability Anomaly Detection** : Détection des probabilités anormales
+- **Prediction Drift** : Surveillance des changements dans les prédictions
+- **Model Aging Detection** : Détection du vieillissement du modèle
+- **Performance Comparison** : Comparaison des scores moyens avec les références
+
+### Composants
+1. **Script de monitoring** : [src/monitoring/model_drift.py](file:///c:/Users/GIGABYTE/mlops-fraud/src/monitoring/model_drift.py)
+2. **Score de référence** : ROC-AUC calculé lors de l'évaluation du modèle
+3. **Analyse des dernières prédictions** : Calcul des métriques sur les données de production
+4. **Alertes automatiques** : Notifications en cas de dérive significative
+
+### Utilisation
+```bash
+# Exécuter manuellement le monitoring
+python src/monitoring/scheduled_model_monitoring.py
+
+# Via l'API
+curl -X POST http://localhost:8000/monitoring/model/check
+```
+
 ## 📂 Structure du projet
 Voir l'arborescence dans la documentation.

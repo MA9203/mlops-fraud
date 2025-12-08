@@ -32,7 +32,7 @@ class TestDataDriftMonitoring(unittest.TestCase):
                 load_reference_data, 
                 load_current_data, 
                 detect_feature_drift,
-                generate_data_drift_dashboard,
+                generate_simple_report,
                 save_drift_report,
                 run_data_drift_monitoring
             )
@@ -45,7 +45,7 @@ class TestDataDriftMonitoring(unittest.TestCase):
         # Mock drift report data
         mock_report = {
             "data_drift": {
-                "data_drift_detected": False,
+                "dataset_drift": False,
                 "n_drifted_features": 0,
                 "n_features": 30,
                 "features": {}
@@ -64,7 +64,7 @@ class TestDataDriftMonitoring(unittest.TestCase):
             report = json.load(f)
         
         self.assertIn('data_drift', report)
-        self.assertIn('data_drift_detected', report['data_drift'])
+        self.assertIn('dataset_drift', report['data_drift'])
         self.assertIn('n_drifted_features', report['data_drift'])
         self.assertIn('n_features', report['data_drift'])
 

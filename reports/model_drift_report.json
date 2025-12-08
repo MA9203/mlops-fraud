@@ -1,0 +1,45 @@
+{
+  "timestamp": "2025-12-08T08:27:41.505924",
+  "reference_metrics": {
+    "roc_auc": 0.9552478595546265
+  },
+  "production_metrics": {
+    "total_predictions": 3,
+    "fraud_predictions": 1,
+    "fraud_rate": 0.3333333333333333,
+    "average_probability": 0.36666666666666664,
+    "probability_std": 0.4129837231121289,
+    "abnormal_probability_rate": 0.0,
+    "prob_mean": 0.3666666666666667
+  },
+  "drift_detected": true,
+  "drift_details": {
+    "roc_auc": {
+      "reference": 0.9552478595546265,
+      "production": 0.9552478595546265,
+      "difference": 0.0,
+      "drift_detected": false
+    },
+    "fraud_rate": {
+      "reference": 0,
+      "production": 0.3333333333333333,
+      "change_ratio": 0.3333333333333333,
+      "drift_detected": false
+    },
+    "average_probability": {
+      "reference": 0,
+      "production": 0.36666666666666664,
+      "change_ratio": 0.36666666666666664,
+      "drift_detected": true
+    },
+    "abnormal_probabilities": {
+      "rate": 0.0,
+      "threshold": 0.1,
+      "drift_detected": false
+    }
+  },
+  "summary": {
+    "total_metrics_compared": 4,
+    "metrics_with_drift": 1
+  }
+}

@@ -5,9 +5,8 @@ from pydantic import BaseModel
 import json
 from datetime import datetime
 
-# Import monitoring functions
+# Import only basic monitoring functions (no Evidently dependencies)
 from src.monitoring.monitoring import log_prediction, generate_metrics
-from src.monitoring.data_drift import run_data_drift_monitoring
 
 app = FastAPI(title="Fraud Detection API")
 
@@ -124,6 +123,8 @@ def get_metrics():
 def check_data_drift():
     """Run data drift detection and return results"""
     try:
+        # Import here to avoid loading Evidently at startup
+        from src.monitoring.data_drift import run_data_drift_monitoring
         drift_summary = run_data_drift_monitoring()
         return drift_summary
     except Exception as e:
@@ -152,4 +153,41 @@ def get_drift_report():
         raise HTTPException(
             status_code=500,
             detail=f"Failed to retrieve drift report: {str(e)}"
+        )
+
+
+@app.post("/monitoring/model/check")
+def check_model_drift():
+    """Run model drift detection and return results"""
+    try:
+        # Import here to avoid loading Evidently at startup
+        from src.monitoring.model_drift import run_model_drift_monitoring
+        model_drift_report = run_model_drift_monitoring()
+        return model_drift_report
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Model drift detection failed: {str(e)}"
+        )
+
+
+@app.get("/monitoring/model/report")
+def get_model_drift_report():
+    """Get the latest model drift report"""
+    try:
+        report_path = "reports/model_drift_report.json"
+        if not os.path.exists(report_path):
+            raise HTTPException(
+                status_code=404,
+                detail="No model drift report found. Run model drift detection first."
+            )
+        
+        with open(report_path, 'r') as f:
+            report = json.load(f)
+        
+        return report
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve model drift report: {str(e)}"
         )

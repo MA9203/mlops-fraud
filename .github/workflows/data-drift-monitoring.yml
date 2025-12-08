@@ -1,4 +1,4 @@
-name: Data Drift Monitoring
+name: Data & Model Drift Monitoring
 
 on:
   schedule:
@@ -8,7 +8,7 @@ on:
     # Allow manual triggering
 
 jobs:
-  data-drift-monitoring:
+  drift-monitoring:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -24,10 +24,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r src/model/requirements.txt
+        pip install -r src/monitoring/requirements.txt
 
     - name: Run data drift monitoring
       run: |
         python src/monitoring/scheduled_monitoring.py --output-dir reports
+        
+    - name: Run model drift monitoring
+      run: |
+        python src/monitoring/scheduled_model_monitoring.py --output-dir reports
         
     - name: Upload drift report artifacts
       uses: actions/upload-artifact@v3
@@ -40,5 +45,5 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add reports/ || echo "No reports to add"
-        git commit -m "Update data drift monitoring reports [skip ci]" || echo "No changes to commit"
+        git commit -m "Update drift monitoring reports [skip ci]" || echo "No changes to commit"
         git push origin main || echo "Failed to push changes"
