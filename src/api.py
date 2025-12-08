@@ -2,6 +2,12 @@ import os
 import joblib
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import json
+from datetime import datetime
+
+# Import monitoring functions
+from src.monitoring.monitoring import log_prediction, generate_metrics
+from src.monitoring.data_drift import run_data_drift_monitoring
 
 app = FastAPI(title="Fraud Detection API")
 
@@ -12,6 +18,15 @@ feature_names = None
 
 class Transaction(BaseModel):
     features: list
+
+
+class DriftReportResponse(BaseModel):
+    timestamp: str
+    reference_data_shape: list
+    current_data_shape: list
+    drift_detected: bool
+    number_of_drifted_features: int
+    total_features: int
 
 
 # 🔥 Fonction universelle pour charger le modèle (test + prod)
@@ -77,6 +92,9 @@ def predict(transaction: Transaction):
             else float(pred)
         )
 
+        # Log the prediction for monitoring
+        log_prediction(transaction.features, int(pred), float(proba))
+
         return {
             "prediction": int(pred),
             "probability": proba
@@ -86,4 +104,52 @@ def predict(transaction: Transaction):
         raise HTTPException(
             status_code=500,
             detail=f"Prediction failed: {str(e)}"
+        )
+
+
+@app.get("/metrics")
+def get_metrics():
+    """Get model performance metrics"""
+    try:
+        metrics = generate_metrics()
+        return metrics
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Metrics generation failed: {str(e)}"
+        )
+
+
+@app.post("/monitoring/drift/check")
+def check_data_drift():
+    """Run data drift detection and return results"""
+    try:
+        drift_summary = run_data_drift_monitoring()
+        return drift_summary
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Data drift detection failed: {str(e)}"
+        )
+
+
+@app.get("/monitoring/drift/report")
+def get_drift_report():
+    """Get the latest data drift report"""
+    try:
+        report_path = "reports/data_drift_report.json"
+        if not os.path.exists(report_path):
+            raise HTTPException(
+                status_code=404,
+                detail="No drift report found. Run drift detection first."
+            )
+        
+        with open(report_path, 'r') as f:
+            report = json.load(f)
+        
+        return report
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve drift report: {str(e)}"
         )

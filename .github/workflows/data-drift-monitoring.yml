@@ -1,0 +1,44 @@
+name: Data Drift Monitoring
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    # Allow manual triggering
+
+jobs:
+  data-drift-monitoring:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r src/model/requirements.txt
+
+    - name: Run data drift monitoring
+      run: |
+        python src/monitoring/scheduled_monitoring.py --output-dir reports
+        
+    - name: Upload drift report artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: drift-reports
+        path: reports/
+        
+    - name: Commit and push reports (if drift detected)
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add reports/ || echo "No reports to add"
+        git commit -m "Update data drift monitoring reports [skip ci]" || echo "No changes to commit"
+        git push origin main || echo "Failed to push changes"
